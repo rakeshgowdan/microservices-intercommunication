@@ -88,3 +88,52 @@ You can find FeignClient via below mvn dependency.
 
 To enable the FeignClient in your application you have to mainly specify two things.
 @EnableFeignClients : To apply at starter class @FeignClient(name=”ApplicationName”) : To define an interface for a Consumer
+
+
+As we discussed above, the two rest clients are follow synchronous process. It means that the call is executed by the same thread which makes the call.
+Then until you finish consuming the API response you can’t execute any other piece of code.
+
+So prevent such kind of behavior, we can convert RestTemplate and FeignClient calls to Asynchronous calls by using CompletableFuture which is introduce with JAVA8.
+
+way of achieve Asynchronous and non blocking REST invoker behavior using WebClient. Which is provided by Spring Reactive Framework with Spring WebFlux library.
+
+
+What is WebClient and Why we use it ?
+The WebClient is Asynchronous and non blocking REST invoker.
+While the Feign client and RestTemplates creates a thread for each request and blocks it until it receives a response.
+So when increase the number of requests we can see there are several number of threads are in waiting state and our ecosystem might consume more memory and its performance will decrease gradually.
+
+As a solution for that, WebClient came into picture and the WebClient executes the HTTP request and adds a “waiting for response” task into a queue. Later, the “waiting for response” task is executed from the queue after the response is received, finally delivering the response to the subscriber function. So there is no more threads in waiting state.
+The Reactive framework implements an event-driven architecture and this enables us to write services that perform HTTP requests with a minimal number of blocking threads.
+
+Lets start the implement REST invoker using WebClient by WebFlux.
+Added below dependency.
+
+```
+<dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webflux</artifactId>
+  </dependency>
+
+```
+
+Spring WebFlux heavily uses two publishers :
+Mono: Returns 0 or 1 element.
+Flux: Returns 0…N elements.
+
+The @EnableWebFlux imports the Spring WebFlux configuration from WebFluxConfigurationSupport that enables the use of annotated controllers and functional endpoints.
+
+```
+@Component
+public class WebClientConsumer {
+ private static final  String user_url="https://api.github.com/users/amila";
+ public Mono<Users> webClientConsumer(){
+  Mono<Users> monoUsers = WebClient.create()
+         .get()
+         .uri(user_url)
+         .retrieve()
+         .bodyToMono(Users.class);
+  return monoUsers;
+ }
+}
+```
